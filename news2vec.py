@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import collections
 import math
 import random
@@ -20,16 +20,15 @@ import Transformer as tr
 
 
 class newsfeature2vec:
-    def __init__(self, walks, out_dir, map_dir, batch_size=2, embedding_size=100, skip_window=5,
-                 num_skips=2, neg_samples=5, iter=3000000):
-        self.iter = iter
+    def __init__(self, walks, out_dir, map_dir, embedding_size=100, skip_window=5,
+                 neg_samples=5, epoch=3):
         self.data_index = 0
-
-        self.words = walks
-        self.batch_size = batch_size
+        self.walks = walks
+        self.words = []
+        for walk in walks:
+            self.words.extend(walk)
         self.embedding_size = embedding_size
         self.skip_window = skip_window
-        self.num_skips = num_skips
         self.neg_samples = neg_samples
         self.encode_content()
         self.build_dataset()
@@ -40,18 +39,20 @@ class newsfeature2vec:
             session.run(tf.global_variables_initializer())
             print("Initialized")
             average_loss = 0
-            for step in xrange(self.iter):
-                batch, labels = self.generate_batch()
+            batch = self.generate_batch(epoch)
+            total = len(walks) * epoch
+            for step, bat in enumerate(batch):
+                batch, labels = bat
                 feed_dict = {self.train_inputs: batch, self.train_labels: labels, self.train: True}
 
                 _, loss_val = session.run([self.optimizer, self.loss], feed_dict=feed_dict)
                 average_loss += loss_val
 
-                if step % 2000 == 0 and step > 0:
+                if step % 200 == 0 and step > 0:
 
-                    average_loss /= 2000
+                    average_loss /= 200
                     # The average loss is an estimate of the loss over the last 2000 batches.
-                    print("Average loss at step {} / {}".format(step, iter), ": ", average_loss)
+                    print("Average loss at step {} / {}".format(step, total), ": ", average_loss)
                     average_loss = 0
             print('\n=======Training over========\n')
             out = np.zeros(shape=(len(self.dictionary), embedding_size))
@@ -96,37 +97,43 @@ class newsfeature2vec:
         for word, _ in self.count:
             self.dictionary[word] = len(self.dictionary)
         self.data = list()
-        for word in self.words:
-            if word in self.dictionary:
-                index = self.dictionary[word]
-            else:
-                index = 0
-            self.data.append(index)
+        for walk in self.walks:
+            data = []
+            for word in walk:
+                if word in self.dictionary:
+                    index = self.dictionary[word]
+                else:
+                    index = 0
+                data.append(index)
+            self.data.append(data)
+
         self.reverse_dictionary = dict(zip(self.dictionary.values(), self.dictionary.keys()))
 
-    def generate_batch(self):
-        assert self.batch_size % self.num_skips == 0
-        assert self.num_skips <= 2 * self.skip_window
-        batch = np.ndarray(shape=[self.batch_size], dtype=np.int32)
-        labels = np.ndarray(shape=(self.batch_size, 1), dtype=np.int32)
+    def generate_batch(self, epoch):
+        num_skips = 2 * self.skip_window
         span = 2 * self.skip_window + 1  # [ skip_window target skip_window ]
-        buffer = collections.deque(maxlen=span)
-        for _ in range(span):
-            buffer.append(self.data[self.data_index])
-            self.data_index = (self.data_index + 1) % len(self.data)
-        for i in range(self.batch_size // self.num_skips):
-            target = self.skip_window  # target label at the center of the buffer
-            targets_to_avoid = [self.skip_window]
-            for j in range(self.num_skips):
-                while target in targets_to_avoid:
-                    target = random.randint(0, span - 1)
-                targets_to_avoid.append(target)
-                batch[i * self.num_skips + j] = buffer[self.skip_window]
-                labels[i * self.num_skips + j, 0] = buffer[target]
-            buffer.append(self.data[self.data_index])
-            self.data_index = (self.data_index + 1) % len(self.data)
-        self.data_index = (self.data_index + len(self.data) - span) % len(self.data)
-        return batch, labels
+        for _ in range(epoch):
+            for da in self.data:
+                data_index = 0
+                sam_num = len(da) - span + 1
+                batch = np.ndarray(shape=[sam_num * num_skips], dtype=np.int32)
+                labels = np.ndarray(shape=(sam_num * num_skips, 1), dtype=np.int32)
+                buffer = collections.deque(maxlen=span)
+                for _ in range(span):
+                    buffer.append(da[data_index])
+                    data_index = data_index + 1
+                for i in range(sam_num):
+                    target = self.skip_window  # target label at the center of the buffer
+                    targets_to_avoid = [self.skip_window]
+                    for j in range(num_skips):
+                        while target in targets_to_avoid:
+                            target = random.randint(0, span - 1)
+                        targets_to_avoid.append(target)
+                        batch[i * num_skips + j] = buffer[self.skip_window]
+                        labels[i * num_skips + j, 0] = buffer[target]
+                    buffer.append(da[data_index])
+                    data_index = (data_index + 1) % len(da)
+                yield batch, labels
 
     def build_model(self):
         self.graph = tf.Graph()
@@ -143,7 +150,7 @@ class newsfeature2vec:
             embedding_self = tf.Variable(initial_value=tf.truncated_normal([self.vocabulary_size, 512]),
                                          trainable=True)
             embed_self = tf.nn.embedding_lookup(embedding_self, self.train_inputs)
-            # embed2 = tf.nn.embedding_lookup(tf.Variable(initial_value=self.emb_m, trainable=False), embed1)
+
 
             content_encode = tr.Transformer(num_layers=2, d_model=512, num_heads=8, dff=2048,
                                     input_vocab_size=self.word_size)(embed1, self.train)
@@ -165,9 +172,7 @@ class newsfeature2vec:
                                                  num_classes=self.vocabulary_size))
 
             self.global_step = tf.Variable(0, name='global_step', trainable=False)
-            lr = tf.train.exponential_decay(0.001, global_step=self.global_step, decay_steps=int(0.05*self.iter),
-                                            decay_rate=0.95)
-            self.optimizer = tf.train.GradientDescentOptimizer(lr).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(1e-3).minimize(self.loss, global_step=self.global_step)
 
 
 

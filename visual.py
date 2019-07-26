@@ -8,7 +8,7 @@ from sklearn.manifold import TSNE
 from googletrans import Translator
 
 
-da = pd.read_csv('cora/cora_c1_e100_add_10.emb', index_col=[0])
+da = pd.read_csv('cora/cora_net.emb', index_col=[0])
 
 a = np.array(np.array(da), dtype=float)
 pred = KMeans(n_clusters=7).fit_predict(a)
@@ -20,7 +20,7 @@ group1 = pd.DataFrame(group)
 
 data = da.join(group1)
 
-a = np.array(data.iloc[:, 0:512])
+a = np.array(data.iloc[:, 0:100])
 
 xy = TSNE(2).fit_transform(a)
 data['x'] = xy[:,0]

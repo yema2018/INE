@@ -13,7 +13,7 @@ def parse_args():
 	parser.add_argument('--input', nargs='?', default='cora/cora.edge',
 						help='Input graph path')
 
-	parser.add_argument('--output', nargs='?', default='cora/cora_c1_e100_add_10.emb',
+	parser.add_argument('--output', nargs='?', default='cora/cora_merge_c5.emb',
 						help='Embeddings path')
 
 	parser.add_argument('--map', nargs='?', default='cora/cora.map',
@@ -28,7 +28,7 @@ def parse_args():
 	parser.add_argument('--num-walks', type=int, default=10,
 						help='Number of walks per source. Default is 5.')
 
-	parser.add_argument('--window-size', type=int, default=1,
+	parser.add_argument('--window-size', type=int, default=5,
 						help='Context size for optimization. Default is 5.')
 
 	parser.add_argument('--p', type=float, default=1,
@@ -78,9 +78,9 @@ def learn_embeddings(walks):
 
 	walks1 = list()
 	for walk in walks:
-		walks1 += list(map(lambda x: map_dict[str(x)], walk))
-	print(walks1[:100])
-	newsfeature2vec(walks1, args.output, args.map, embedding_size=args.dimensions, skip_window=args.window_size, iter=len(walks1))
+		walks1.append(list(map(lambda x: map_dict[str(x)], walk)))
+	print(walks1[0][:100])
+	newsfeature2vec(walks1, args.output, args.map, embedding_size=args.dimensions, skip_window=args.window_size)
 	return
 
 def main(args):
