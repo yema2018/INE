@@ -2,48 +2,50 @@ import os
 import json
 import re
 import pandas as pd
+import re
 
-# cla_ml = [(i.split('\t')[0], i.split('\t')[1]) for i in open('cora/classifications') if 'Machine_Learning' in i]
-#
-# claml1 = [j[0] for j in cla_ml]
-#
-# ml_node = [i for i in open('cora/papers') if i.split('\t')[1] in claml1]
-#
-# ml_dict = {}
-# for m in ml_node:
-#     ml_dict = {}
-#     url = m.split('\t')[1]
-#     ml_dict['id'] = m.split('\t')[0]
-#     ml_dict['type'] = cla_ml[claml1.index(url)][-1]
-#     try:
-#         title = re.findall('<title> (.*?) </title>', m)[0]
-#     except:
-#         continue
-#     try:
-#         booktitle = re.findall('<booktitle> (.*?) </booktitle>', m)[0]
-#     except:
-#         booktitle = 'None'
-#     try:
-#         category = re.findall('<type> (.*?) </type>', m)[0]
-#     except:
-#         category = 'None'
-#     ml_dict['title'] = title
-#     ml_dict['category'] = category
-#     ml_dict['booktitle'] = booktitle
-#     with open('cora.json', 'a', encoding='utf-8') as fw:
-#         json.dump(ml_dict, fw, ensure_ascii=False)
-#         fw.write('\n')
-#
-#
-# a = [json.loads(i) for i in open('cora.json')]
-# keys = ['category', 'type', 'title', 'booktitle', 'id']
-#
-# da = [(i[keys[0]], i[keys[1]], i[keys[2]], i[keys[3]], i[keys[4]]) for i in a]
-#
-# import pandas as pd
-#
-# daa = pd.DataFrame(da, columns=keys)
-# daa = daa.drop_duplicate
+"""
+cla_ml = [(i.split('\t')[0], i.split('\t')[1]) for i in open('cora/classifications') if 'Machine_Learning' in i]
+
+claml1 = [j[0] for j in cla_ml]
+
+ml_node = [i for i in open('cora/papers') if i.split('\t')[1] in claml1]
+
+ml_dict = {}
+for m in ml_node:
+    ml_dict = {}
+    url = m.split('\t')[1]
+    ml_dict['id'] = m.split('\t')[0]
+    ml_dict['type'] = cla_ml[claml1.index(url)][-1]
+    try:
+        title = re.findall('<title> (.*?) </title>', m)[0]
+    except:
+        continue
+    try:
+        booktitle = re.findall('<booktitle> (.*?) </booktitle>', m)[0]
+    except:
+        booktitle = 'None'
+    try:
+        category = re.findall('<type> (.*?) </type>', m)[0]
+    except:
+        category = 'None'
+    ml_dict['title'] = title
+    ml_dict['category'] = category
+    ml_dict['booktitle'] = booktitle
+    with open('cora.json', 'a', encoding='utf-8') as fw:
+        json.dump(ml_dict, fw, ensure_ascii=False)
+        fw.write('\n')
+
+
+a = [json.loads(i) for i in open('cora.json')]
+keys = ['category', 'type', 'title', 'booktitle', 'id']
+
+da = [(i[keys[0]], i[keys[1]], i[keys[2]], i[keys[3]], i[keys[4]]) for i in a]
+
+import pandas as pd
+
+daa = pd.DataFrame(da, columns=keys)
+daa = daa.drop_duplicate
 
 
 
@@ -56,3 +58,48 @@ abss = [i.strip('\n') for i in open('cora/data.txt')]
 abs = pd.DataFrame(abss, index=range(len(abss)))
 
 abs.to_csv('cora/cora.map', header=False)
+"""
+
+
+e = [i.strip(' \n').split() for i in open('dblp/adjedges.txt')]
+
+with open('dblp/dblp.edge', 'w') as fw:
+    for a in e:
+        if len(a)==1:
+            continue
+        for i in range(1, len(a)):
+            fw.write(a[0]+' '+a[i]+'\n')
+
+
+e = [set(i.strip(' \n').split()) for i in open('dblp/dblp.edge')]
+drop_id = []
+for i in range(len(e)-1):
+    try:
+        a = e.index(e[i], (i+1))
+    except: continue
+    drop_id.append(a)
+
+
+e = pd.read_csv('dblp/dblp.edge', sep=' ', names=['1','2'])
+e = e.drop(drop_id)
+e.to_csv('dblp/dblp.edge',sep=' ',header=False,index=False)
+
+
+drop_id=[]
+e = pd.read_csv('dblp/dblp.edge', sep=' ', names=['1','2'])
+a = [i.strip('\n').split(' ') for i in open('dblp/docs.txt')]
+index = [i[0] for i in a]
+for i in range(len(e)):
+    v = e.iloc[i].astype(str).values
+    if v[0] not in index or v[1] not in index:
+        drop_id.append(i)
+
+
+
+
+a = [i.strip('\n').split(' ') for i in open('dblp/docs.txt')]
+index = [i[0] for i in a]
+text = [re.sub('[’!"#$%&\'()*+,-./:;<=>?@，。?★、…【】《》？“”‘’！[\\]^_'
+               '`{|}~]+', "", ' '.join(i[1:])).strip() for i in a]
+a = pd.DataFrame({'0':index, '1':text})
+a.to_csv('dblp/dblp.map',index=False,header=False)

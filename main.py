@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 import random_walks
 from news2vec import newsfeature2vec
+import pandas as pd
 
 def parse_args():
 	'''
@@ -10,22 +11,22 @@ def parse_args():
 	'''
 	parser = argparse.ArgumentParser(description="Run News2vec.")
 
-	parser.add_argument('--input', nargs='?', default='cora/cora.edge',
+	parser.add_argument('--input', nargs='?', default='dblp/dblp.edge',
 						help='Input graph path')
 
-	parser.add_argument('--output', nargs='?', default='cora/cora_merge_c5.emb',
+	parser.add_argument('--output', nargs='?', default='dblp/sim_d200_dr0.5_h4.emb',
 						help='Embeddings path')
 
-	parser.add_argument('--map', nargs='?', default='cora/cora.map',
+	parser.add_argument('--map', nargs='?', default='dblp/dblp.map',
 						help='Map indice to nodes')
 
-	parser.add_argument('--dimensions', type=int, default=100,
+	parser.add_argument('--dimensions', type=int, default=200,
 						help='Number of dimensions. Default is 128.')
 
 	parser.add_argument('--walk-length', type=int, default=80,
 						help='Length of walk per source. Default is 100.')
 
-	parser.add_argument('--num-walks', type=int, default=10,
+	parser.add_argument('--num-walks', type=int, default=5,
 						help='Number of walks per source. Default is 5.')
 
 	parser.add_argument('--window-size', type=int, default=5,
@@ -71,10 +72,13 @@ def learn_embeddings(walks):
 	'''
 
 	map_dict = {}
-	with open(args.map, 'r',encoding='utf-8') as f:
-		for l in f:
-			l = l.strip('\n').split(',')
-			map_dict[l[0]] = l[1]
+	mapf = pd.read_csv(args.map, index_col=[0], names=['id'])
+	for i in mapf.index:
+		map_dict[str(i)] = mapf.loc[i, 'id']
+	# with open(args.map, 'r',encoding='utf-8') as f:
+	# 	for l in f:
+	# 		l = l.strip('\n').split(' ')
+	# 		map_dict[l[0]] = l[1]
 
 	walks1 = list()
 	for walk in walks:

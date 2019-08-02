@@ -29,9 +29,6 @@ def positional_encoding(position, d_model):
 
     return tf.cast(pos_encoding, dtype=tf.float32)
 
-pos_encoding = positional_encoding(50, 512)
-print (pos_encoding.shape)
-
 
 def create_padding_mask(seq):
     seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
@@ -42,8 +39,38 @@ def create_padding_mask(seq):
 
 
 def create_look_ahead_mask(size):
-  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
-  return mask  # (seq_len, seq_len)
+    mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+    return mask  # (seq_len, seq_len)
+
+
+def create_output_mask(seq):
+    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+    return seq[:, :, tf.newaxis]
+
+
+def Attention_Layer(input_, mask):
+    """
+    self-attention
+    :param input_: output from last Bi-RNN
+    :param name: For 'word' encoder or 'sentence' encoder
+    :return: vector encoded
+    """
+    shape = input_.shape
+
+    weight = tf.get_variable("AttentionWeight",
+                             initializer=tf.truncated_normal([shape[-1].value], mean=0, stddev=0.01),
+                             dtype=tf.float32)
+    # :[*batch_size, length_*, hidden_units * 2]
+    h = tf.keras.layers.Dense(shape[-1].value)(input_)
+
+    # :[*batch_size, length_*, 1]
+    logits = tf.reduce_sum(tf.multiply(weight, h), keepdims=True, axis=-1)
+    logits /= tf.math.sqrt(tf.cast(shape[-1], tf.float32))
+    logits += (mask * -1e9)
+    alpha = tf.nn.softmax(logits, axis=1, name='alpha')
+
+    # :[*batch_size, hidden_units*2]
+    return tf.reduce_sum(tf.multiply(input_, alpha), axis=1)
 
 
 def scaled_dot_product_attention(q, k, v, mask):
@@ -141,7 +168,7 @@ def point_wise_feed_forward_network(d_model, dff):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dff, rate=0.5):
         super(EncoderLayer, self).__init__()
 
         self.mha = MultiHeadAttention(d_model, num_heads)
@@ -162,18 +189,18 @@ class EncoderLayer(tf.keras.layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         out2 = self.layernorm2(out1 + ffn_output)  # (batch_size, input_seq_len, d_model)
 
-        return out2
+        return out1
 
 
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 rate=0.1):
+                 rate=0.5):
         super(Encoder, self).__init__()
 
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = tf.keras.layers.Embedding(input_vocab_size, d_model, mask_zero=True, trainable=True)
+        self.embedding = tf.keras.layers.Embedding(input_vocab_size, d_model)
         self.pos_encoding = positional_encoding(input_vocab_size, self.d_model)
 
         self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate)
@@ -194,21 +221,21 @@ class Encoder(tf.keras.layers.Layer):
         for i in range(self.num_layers):
             x = self.enc_layers[i](x, training, mask)
 
+        # x += self.pos_encoding[:, :seq_len, :]
+
         return x  # (batch_size, input_seq_len, d_model)
 
 
 class Transformer(tf.keras.Model):
-    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size, rate=0.1):
+    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size, rate=0.5):
         super(Transformer, self).__init__()
 
         self.encoder = Encoder(num_layers, d_model, num_heads, dff,
                                input_vocab_size, rate)
 
-    def call(self, inp, training):
-        enc_output = self.encoder(inp, training, create_padding_mask(inp))  # (batch_size, inp_seq_len, d_model)
+    def call(self, inp, training, mask):
+        enc_output = self.encoder(inp, training, mask)  # (batch_size, inp_seq_len, d_model)
 
-        final_output = tf.reduce_mean(tf.keras.layers.Masking()(enc_output), axis=1)  # (batch_size, d)
-
-        return tf.keras.layers.BatchNormalization(epsilon=1e-6)(final_output)
+        return enc_output
 
 

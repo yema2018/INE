@@ -8,7 +8,7 @@ from sklearn.manifold import TSNE
 from googletrans import Translator
 
 
-da = pd.read_csv('cora/cora_net.emb', index_col=[0])
+da = pd.read_csv('dblp/sim_d100_dr0.5_h2.emb', index_col=[0])
 
 a = np.array(np.array(da), dtype=float)
 pred = KMeans(n_clusters=7).fit_predict(a)
@@ -26,7 +26,7 @@ xy = TSNE(2).fit_transform(a)
 data['x'] = xy[:,0]
 data['y'] = xy[:,1]
 
-cname = ['black','blue','brown', 'red', 'pink', 'green', 'yellow']
+cname = ['black', 'blue', 'brown', 'red', 'pink', 'green', 'yellow'][:4]
 
 type1 = list(set(data[0].values))
 
@@ -36,7 +36,8 @@ ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])
 
 for i, n in zip(type1, cname):
     d = data[data[0] == i]
-    ax.scatter(list(d['x']), list(d['y']), c=n, alpha=0.8, s=5, label=str(i))
+    ax.scatter(list(d['x']), list(d['y']), c=n, alpha=0.8, s=10, label=str(i))
     ax.legend(loc='upper right', bbox_to_anchor=(1.3,1), prop={'size':8})
 # plt.gcf().savefig('thuc_without.png')
 plt.show()
+
