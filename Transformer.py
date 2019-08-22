@@ -48,6 +48,23 @@ def create_output_mask(seq):
     return seq[:, :, tf.newaxis]
 
 
+class AttLayer(tf.keras.layers.Layer):
+    def __init__(self, emb_size):
+        super(AttLayer, self).__init__()
+        self.emb_size = emb_size
+        self.weight = tf.get_variable("AttentionWeight",
+                             initializer=tf.truncated_normal([emb_size], mean=0, stddev=0.01),
+                             dtype=tf.float32)
+        self.full_conn = tf.keras.layers.Dense(emb_size)
+
+    def call(self, inputs, mask):
+        h = self.full_conn(inputs)
+        logits = tf.reduce_sum(tf.multiply(self.weight, h), keepdims=True, axis=-1)
+        logits /= tf.math.sqrt(tf.cast(self.emb_size, tf.float32))
+        logits += (mask * -1e9)
+        alpha = tf.nn.softmax(logits, axis=1, name='alpha')
+        return tf.reduce_sum(tf.multiply(inputs, alpha), axis=1)
+
 def Attention_Layer(input_, mask):
     """
     self-attention
@@ -220,8 +237,6 @@ class Encoder(tf.keras.layers.Layer):
 
         for i in range(self.num_layers):
             x = self.enc_layers[i](x, training, mask)
-
-        # x += self.pos_encoding[:, :seq_len, :]
 
         return x  # (batch_size, input_seq_len, d_model)
 
