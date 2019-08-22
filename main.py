@@ -6,22 +6,22 @@ from news2vec import newsfeature2vec
 import pandas as pd
 from sklearn.preprocessing import LabelBinarizer
 
-def parse_args(out_dir, a, b):
+def parse_args():
     '''
     Parses the News2vec arguments.
     '''
     parser = argparse.ArgumentParser(description="Run News2vec.")
 
-    parser.add_argument('--input', nargs='?', default='dblp/dblp.edge',
+    parser.add_argument('--input', nargs='?', default='cora/cora.edge',
                         help='Input graph path')
 
-    parser.add_argument('--output', nargs='?', default=out_dir,
+    parser.add_argument('--output', nargs='?', default='cora/a0.3_0',
                         help='Embeddings path')
 
-    parser.add_argument('--map', nargs='?', default='dblp/dblp.map',
+    parser.add_argument('--map', nargs='?', default='cora/cora.map',
                         help='Map indice to nodes')
 
-    parser.add_argument('--group', nargs='?', default='dblp/group.txt',
+    parser.add_argument('--group', nargs='?', default='cora/group.txt',
                         help='node categories')
 
     parser.add_argument('--dimensions', type=int, default=100,
@@ -30,17 +30,17 @@ def parse_args(out_dir, a, b):
     parser.add_argument('--walk-length', type=int, default=80,
                         help='Length of walk per source. Default is 100.')
 
-    parser.add_argument('--num-walks', type=int, default=6,
-                        help='Number of walks per source. Default is 5.')
+    parser.add_argument('--num-walks', type=int, default=3,
+                        help='Number of walks per source. Default is 3 for Cora.')
 
     parser.add_argument('--window-size', type=int, default=5,
                         help='Context size for optimization. Default is 5.')
 
-    parser.add_argument('--a', type=float, default=a,
-                        help='the unlabeled ratio. Default is 0.3.')
+    parser.add_argument('--a', type=float, default=0.3,
+                        help='the unlabeled/test ratio. Default is 0.3.')
 
-    parser.add_argument('--b', type=float, default=b,
-                        help='the coefficient of loss2')
+    parser.add_argument('--b', type=float, default=10,
+                        help='the coefficient of loss2. Default is 10')
 
     parser.add_argument('--p', type=float, default=1,
                         help='Return hyperparameter. Default is 1.')
@@ -49,7 +49,7 @@ def parse_args(out_dir, a, b):
                         help='Inout hyperparameter. Default is 1.')
 
     parser.add_argument('--un', dest='unsupervised', action='store_true',
-                        help='Boolean specifying (un/semi)supervised. Default is unsupervised.')
+                        help='Boolean specifying (un/semi)supervised. Default is semi-supervised.')
     parser.add_argument('--semi', dest='semi_supervised', action='store_false')
     parser.set_defaults(unsupervised=False)
 
@@ -149,7 +149,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    for i in [0.5,0.7,0.9]:
-        out_dir = 'dblp/temp_a{}'.format(i)
-        args = parse_args(out_dir, a=i, b=10.0)
-        main(args)
+
+    args = parse_args()
+    main(args)

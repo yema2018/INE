@@ -38,9 +38,6 @@ def SVMforSemi(data, emb):
     x_test = emb.loc[test.index].values
     y_test = test['label'].values
 
-    # x_test = pd.read_csv('dblp/temp_a0.9_oon',index_col=0).values
-    # y_test = pd.read_csv('dblp/toon/oot_drop',index_col=[0])['t'].values
-
     ros = RandomOverSampler(random_state=0)
     X_resampled, y_resampled = ros.fit_sample(x_train, y_train)
 
@@ -65,7 +62,7 @@ if __name__ == "__main__":
     # emb.columns = [str(i) for i in range(100)]
     # emb.index = [int(i) for i in emb.index]
     #
-    unlabeled_ratio = 0.9
+    unlabeled_ratio = 0.3
 
     mapf = pd.read_csv('cora/cora.map', index_col=[0], names=['id'])
     labelf = pd.read_csv('cora/group.txt', sep=' ', index_col=[0], names=['label'])
@@ -81,6 +78,6 @@ if __name__ == "__main__":
             mask[m] = 0
     data['mask'] = mask
 
-    emb = pd.read_csv('cora/b10/a0.9_3_0.8658431165906076', index_col=[0])
+    emb = pd.read_csv('cora/b10/a0.3_1_0.9873808791726739', index_col=[0])
     f1, _ = SVMforSemi(data, emb)
 

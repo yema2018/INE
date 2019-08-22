@@ -78,23 +78,11 @@ class newsfeature2vec:
             map = pd.read_csv(map_dir, index_col=[1], names=['id'])
             out = out.join(map).dropna()
             out = out.set_index(out['id'].astype(int)).drop(['id'], axis=1)
-            # if unsupervised:
-            #     f1, _ = SVMclassifier(out, embedding_size, group=group_dir, test_ratio=0.3)
-            # else:
-            #     f1, _ = SVMforSemi(temp_data, out)
-            out.to_csv(out_dir)
-
-            # compute text embedding outside citation network
-            oot = pd.read_csv('dblp/toon/oot_drop',index_col=[0])
-            out = np.zeros(shape=(len(oot), embedding_size))
-            for i, t in enumerate(oot['d']):
-                token = np.array(sequence.pad_sequences(self.token.texts_to_sequences([t]),
-                                                           maxlen=28, padding='post'), dtype=np.int32)
-                out[i] = session.run(self.oot_encode, feed_dict={self.oot: token, self.train: False})
-            out = pd.DataFrame(out, index=oot.index)
-            # f1, _ = SVMclassifier(out, embedding_size, group=group_dir, test_ratio=0.3)
-            out.to_csv(out_dir+'_oon')
-
+            if unsupervised:
+                f1, _ = SVMclassifier(out, embedding_size, group=group_dir, test_ratio=0.3)
+            else:
+                f1, _ = SVMforSemi(temp_data, out)
+            out.to_csv(out_dir+'_'+str(f1))
 
     def encode_content(self):
         self.token = text.Tokenizer()
@@ -186,38 +174,28 @@ class newsfeature2vec:
             self.train_inputs = tf.placeholder(tf.int32, shape=[None])
             self.train_labels = tf.placeholder(tf.int32, shape=[None, 1])
             self.train = tf.placeholder(tf.bool)
-            self.oot = tf.placeholder(tf.int32, shape=[None, 28])
             self.mask = tf.placeholder(tf.float32, shape=[None, 1])
             if lb is not None:
                 self.type = tf.placeholder(tf.float32, shape=[None, len(lb.classes_)])
 
             embeddings = tf.Variable(initial_value=self.encoded_mat, trainable=False)
-            embed1 = tf.nn.embedding_lookup(embeddings, self.train_inputs)
 
-            # embedding_self = tf.Variable(initial_value=tf.truncated_normal([self.vocabulary_size, self.embedding_size]),
-            #                          trainable=True)
-            # embed_self = tf.nn.embedding_lookup(embedding_self, self.train_inputs)
+            embed1 = tf.nn.embedding_lookup(embeddings, self.train_inputs)
 
             mask1 = tr.create_padding_mask(embed1)
 
             mask2 = tr.create_output_mask(embed1)
 
-            mask1_oot = tr.create_padding_mask(self.oot)
-
-            mask2_oot = tr.create_output_mask(self.oot)
-
+            # the num_layers is fixed at 1, the dff is a invalid hyper-parameter because point_wise_feed_forward_network
+            # is not used
             encoding_model = tr.Transformer(num_layers=1, d_model=self.embedding_size, num_heads=2,
                                             dff=512, input_vocab_size=self.word_size)
 
             content_encode = encoding_model(embed1, self.train, mask1)
 
-            oot_encode = encoding_model(self.oot, self.train, mask1_oot)
-
             att_layer = tr.AttLayer(self.embedding_size)
 
             self.encode = att_layer(content_encode, mask2)
-
-            self.oot_encode = att_layer(oot_encode, mask2_oot)
 
             nce_weights1 = tf.Variable(
                 tf.truncated_normal([self.vocabulary_size, self.embedding_size],

@@ -65,30 +65,6 @@ class AttLayer(tf.keras.layers.Layer):
         alpha = tf.nn.softmax(logits, axis=1, name='alpha')
         return tf.reduce_sum(tf.multiply(inputs, alpha), axis=1)
 
-def Attention_Layer(input_, mask):
-    """
-    self-attention
-    :param input_: output from last Bi-RNN
-    :param name: For 'word' encoder or 'sentence' encoder
-    :return: vector encoded
-    """
-    shape = input_.shape
-
-    weight = tf.get_variable("AttentionWeight",
-                             initializer=tf.truncated_normal([shape[-1].value], mean=0, stddev=0.01),
-                             dtype=tf.float32)
-    # :[*batch_size, length_*, hidden_units * 2]
-    h = tf.keras.layers.Dense(shape[-1].value)(input_)
-
-    # :[*batch_size, length_*, 1]
-    logits = tf.reduce_sum(tf.multiply(weight, h), keepdims=True, axis=-1)
-    logits /= tf.math.sqrt(tf.cast(shape[-1], tf.float32))
-    logits += (mask * -1e9)
-    alpha = tf.nn.softmax(logits, axis=1, name='alpha')
-
-    # :[*batch_size, hidden_units*2]
-    return tf.reduce_sum(tf.multiply(input_, alpha), axis=1)
-
 
 def scaled_dot_product_attention(q, k, v, mask):
     """Calculate the attention weights.
