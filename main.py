@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import networkx as nx
 import random_walks
-from news2vec import newsfeature2vec
+from encoder import UNE
 import pandas as pd
 from sklearn.preprocessing import LabelBinarizer
 
@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--input', nargs='?', default='cora/cora.edge',
                         help='Input graph path')
 
-    parser.add_argument('--output', nargs='?', default='cora/a0.3_0',
+    parser.add_argument('--output', nargs='?', default='cora/a0.5_0',
                         help='Embeddings path')
 
     parser.add_argument('--map', nargs='?', default='cora/cora.map',
@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument('--window-size', type=int, default=5,
                         help='Context size for optimization. Default is 5.')
 
-    parser.add_argument('--a', type=float, default=0.3,
+    parser.add_argument('--a', type=float, default=0.5,
                         help='the unlabeled/test ratio. Default is 0.3.')
 
     parser.add_argument('--b', type=float, default=10,
@@ -95,7 +95,7 @@ def learn_embeddings(walks):
         for walk in walks:
             walks1.append(list(map(lambda x: map_dict[str(x)], walk)))
         print(walks1[0][:100])
-        newsfeature2vec(walks1, args.output, args.map, args.group, embedding_size=args.dimensions,
+        UNE(walks1, args.output, args.map, args.group, embedding_size=args.dimensions,
                         skip_window=args.window_size, unsupervised=True)
     else:
         mapf = pd.read_csv(args.map, index_col=[0], names=['id'])
@@ -131,7 +131,7 @@ def learn_embeddings(walks):
         print(walks1[0][:100])
         print(label_walks[0][:100])
         print(mask_walks[0][:100])
-        newsfeature2vec(walks1, args.output, args.map, args.group, embedding_size=args.dimensions,
+        UNE(walks1, args.output, args.map, args.group, embedding_size=args.dimensions,
                         skip_window=args.window_size, label_walks=label_walks,
                         mask_walks=mask_walks, unsupervised=False, lb=lb, temp_data=data, coeff=args.b)
 
@@ -149,6 +149,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-
     args = parse_args()
     main(args)

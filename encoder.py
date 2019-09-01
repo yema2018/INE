@@ -17,8 +17,8 @@ import Transformer as tr
 from Classification import SVMclassifier, SVMforSemi
 
 
-class newsfeature2vec:
-    def __init__(self, walks, out_dir, map_dir, group_dir, embedding_size=200, skip_window=5,
+class UNE:
+    def __init__(self, walks, out_dir, map_dir, group_dir, embedding_size=100, skip_window=5,
                  neg_samples=5, epoch=1, batch_size=64, unsupervised=True, label_walks=None,
                  mask_walks=None, lb=None, temp_data=None, coeff=None):
         if not unsupervised:
