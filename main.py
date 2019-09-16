@@ -10,7 +10,7 @@ def parse_args():
     '''
     Parses the News2vec arguments.
     '''
-    parser = argparse.ArgumentParser(description="Run News2vec.")
+    parser = argparse.ArgumentParser(description="Run INE.")
 
     parser.add_argument('--input', nargs='?', default='cora/cora.edge',
                         help='Input graph path')
