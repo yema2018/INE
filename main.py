@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelBinarizer
 
 def parse_args():
     '''
-    Parses the News2vec arguments.
+    Parses the INE arguments.
     '''
     parser = argparse.ArgumentParser(description="Run INE.")
 
